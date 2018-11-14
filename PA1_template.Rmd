@@ -1,25 +1,131 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "PA1_template.Rmd"
+author: "Caio Alves"
+date: "9/18/2018"
+output: md_document
 ---
+```{r load_libs, include=FALSE, echo=FALSE}
+library(dplyr)
+library(ggplot2)
+options(warn=-1) # Supressing warnings in this report
+```
+# Peer-graded Assignment: Course Project 1
 
+It is now possible to collect a large amount of data about personal movement using activity monitoring devices such as a Fitbit, Nike Fuelband, or Jawbone Up. These type of devices are part of the “quantified self” movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. But these data remain under-utilized both because the raw data are hard to obtain and there is a lack of statistical methods and software for processing and interpreting the data.
 
+This assignment makes use of data from a personal activity monitoring device.
+
+## Observations
+* I've hide all library loads from HTML/Markdown report for reading purposes
+* 
+
+# Analysis
 ## Loading and preprocessing the data
-
-
-
+### Load the Data
+```{r load_data}
+rawData <- read.csv("activity.csv")
+```
+### Process/transform the data (if necessary) into a format suitable for your analysis
+Creating variable without NA steps
+```{r process_transform}
+# Using dplyr library
+data <- rawData %>% filter(!is.na(steps))
+```
 ## What is mean total number of steps taken per day?
+For this part of the assignment, I will ignore the missing values in the dataset.
 
+### Calculate the total number of steps taken per day
+```{r total_steps}
+totalSteps <- aggregate(data$steps, list(date = data$date), sum)
+print(totalSteps)
+```
 
+### Make a histogram of the total number of steps taken each day
+```{r histogram}
+histogram <- ggplot(data = totalSteps, aes(totalSteps$x)) + geom_histogram() + labs(x = "Steps per day", title = "Histogram for steps") + scale_y_continuous(breaks = (1:5)*2)
+print(histogram)
+```
+
+### Calculate and report the mean and median of the total number of steps taken per day
+```{r mean_median_steps}
+meanSteps <- aggregate(data$steps, list(date = data$date), mean)
+print(meanSteps)
+medianSteps <- aggregate(data$steps, list(date = data$date), median)
+print(medianSteps)
+```
 
 ## What is the average daily activity pattern?
 
+### Make a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+```{r time_series}
+timeSeriesData <- aggregate(data$steps, list(interval = data$interval), mean)
+timeSeries <- ggplot(data = timeSeriesData, aes(x = interval, y = x)) + geom_line() + labs(x = "5-minute interval", y = "Average Steps", title = "Average steps time series")
+print(timeSeries)
+```
 
+### Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+```{r max_steps_interval}
+maxStepsInteval <- timeSeriesData %>% filter(x == max(x))
+print(maxStepsInteval)
+```
 
 ## Imputing missing values
 
+### Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+```{r NA_val}
+# There are no NA values for 'date' or 'interval'
+nrow(rawData %>% filter(is.na(steps)))
+```
 
+### Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
+### Create a new dataset that is equal to the original dataset but with the missing data filled in.
+```{r strategy}
+# The 'steps' median value is 0, as found before.
+# My strategy will fill NA values with 0
+
+newDataset <- rawData
+newDataset$steps[is.na(newDataset$steps)] <- 0
+nrow(newDataset %>% filter(is.na(steps)))
+```
+
+### Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. 
+
+```{r histogram_mean_median_steps}
+totalSteps2 <- aggregate(newDataset$steps, list(date = newDataset$date), sum)
+histogram2 <- ggplot(data = totalSteps2, aes(totalSteps2$x)) + geom_histogram() + labs(x = "Steps per day", title = "Histogram for steps") + scale_y_continuous(breaks = (1:5)*2)
+print(histogram2)
+
+meanSteps2 <- aggregate(newDataset$steps, list(date = newDataset$date), mean)
+print(meanSteps2)
+medianSteps2 <- aggregate(newDataset$steps, list(date = newDataset$date), median)
+print(medianSteps2)
+
+# Q: Do these values differ from the estimates from the first part of the assignment? 
+# A: The histogram shows more values for 0 steps; dates previously missing appear now with mean and median values
+
+# Q: What is the impact of imputing missing data on the estimates of the total daily number of steps?
+# A: In this case, since I replaced NA with 0, it has no impact
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+### Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
+```{r weekdays}
+# Will ignore missing values for this step
+
+weekDataset <- data
+weekDataset$weekday <- ifelse(weekdays(as.Date(weekDataset$date)) %in% c("Saturday", "Sunday"), "weekend", "weekday")
+```
+
+### Make a panel plot containing a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).
+```{r weekdays_plot}
+weekdayDataset <- weekDataset %>% filter(weekday == "weekday")
+timeSeriesData2 <- aggregate(weekdayDataset$steps, list(interval = weekdayDataset$interval), mean)
+timeSeries2 <- ggplot(data = timeSeriesData2, aes(x = interval, y = x)) + geom_line() + labs(x = "5-minute interval", y = "Average Steps", title = "Average steps time series - Weekdays")
+print(timeSeries2)
+
+weekendDataset <- weekDataset %>% filter(weekday != "weekday")
+timeSeriesData3 <- aggregate(weekendDataset$steps, list(interval = weekendDataset$interval), mean)
+timeSeries3 <- ggplot(data = timeSeriesData3, aes(x = interval, y = x)) + geom_line() + labs(x = "5-minute interval", y = "Average Steps", title = "Average steps time series - Weekends")
+print(timeSeries3)
+```
